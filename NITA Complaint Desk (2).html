@@ -1,0 +1,908 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>NITA Complaint Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a maintenance work-order desk. Header + tabbed views (register, sections, track, staff).
+   Each complaint is a ticket with a mono ID, trade code and status pill. */
+:root {
+  --bg: #ecf0ed;
+  --surface: #fafbfa;
+  --surface-2: #e2e9e5;
+  --ink: #13262b;
+  --muted: #55696c;
+  --line: #c6d2cd;
+  --accent: #0b5d6b;
+  --accent-ink: #ffffff;
+  --amber: #b97a00;
+  --danger: #b3261e;
+  --st-reg: #5b6f8a;
+  --st-asg: #a96a00;
+  --st-prog: #1f6fb5;
+  --st-res: #1d7a4a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1a1d; --surface: #142327; --surface-2: #1b2f34; --ink: #e3eeec; --muted: #8fa6a8;
+    --line: #293c41; --accent: #54c3d2; --accent-ink: #072a30; --amber: #f0b840; --danger: #ff8a80;
+    --st-reg: #8ea4c2; --st-asg: #f0b840; --st-prog: #6db6f2; --st-res: #5fcf93;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1a1d; --surface: #142327; --surface-2: #1b2f34; --ink: #e3eeec; --muted: #8fa6a8;
+  --line: #293c41; --accent: #54c3d2; --accent-ink: #072a30; --amber: #f0b840; --danger: #ff8a80;
+  --st-reg: #8ea4c2; --st-asg: #f0b840; --st-prog: #6db6f2; --st-res: #5fcf93;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-block: 0 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* header */
+.top { padding-block: 28px 18px; display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: flex-end; justify-content: space-between; }
+.brand h1 { font-size: clamp(34px, 7vw, 56px); font-weight: 800; letter-spacing: -.02em; margin-top: 8px; }
+.brand p { color: var(--muted); max-width: 46ch; margin-top: 8px; }
+.tally { display: flex; gap: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; }
+.tally div { padding: 10px 16px; border-right: 1px solid var(--line); min-width: 84px; }
+.tally div:last-child { border-right: 0; }
+.tally b { display: block; font-family: var(--font-mono); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tally span { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+
+nav.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--ink); margin-bottom: 24px; }
+nav.tabs a {
+  padding: 10px 16px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; margin-bottom: -2px;
+}
+nav.tabs a:hover { color: var(--ink); }
+nav.tabs a[aria-current="page"] { background: var(--ink); color: var(--bg); }
+
+.banner { border: 1px dashed var(--amber); color: var(--ink); background: color-mix(in srgb, var(--amber) 12%, var(--surface)); padding: 10px 14px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+.banner[hidden] { display: none; }
+
+/* register */
+.reg { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; align-items: start; }
+@media (max-width: 820px) { .reg { grid-template-columns: minmax(0, 1fr); } }
+form { display: grid; gap: 26px; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend, label.lbl { font-weight: 600; font-size: 14px; padding: 0; margin-bottom: 8px; display: block; }
+.hint { color: var(--muted); font-size: 13px; font-weight: 400; }
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.cat { position: relative; }
+.cat input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.cat .card { display: block; height: 100%; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.cat .code { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; color: var(--accent); font-weight: 600; }
+.cat .nm { display: block; font-family: var(--font-display); font-weight: 600; font-size: 17px; margin-top: 2px; }
+.cat .bl { display: block; font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+.cat input:checked + .card { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent); }
+.cat input:focus-visible + .card { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+.field { min-width: 0; }
+input[type=text], input[type=tel], select, textarea {
+  width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+}
+textarea { min-height: 110px; resize: vertical; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.seg span { display: inline-block; padding: 8px 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font-size: 14px; }
+.seg input:checked + span { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.err { color: var(--danger); font-size: 13px; margin-top: 6px; min-height: 0; }
+.err:empty { display: none; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  padding: 11px 20px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.small { padding: 6px 12px; font-size: 13px; }
+.contact-note { font-size: 13px; color: var(--muted); }
+aside.next { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px; position: sticky; top: 16px; }
+aside.next h2 { font-size: 20px; margin: 6px 0 14px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.steps li { display: grid; grid-template-columns: 14px 1fr; gap: 10px; font-size: 13.5px; }
+.steps i { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--c); }
+.steps b { display: block; font-size: 14px; }
+.steps span { color: var(--muted); }
+
+.done { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 22px; display: grid; gap: 12px; }
+.done[hidden], form[hidden] { display: none; }
+.done h2 { font-size: 26px; }
+.bigid { font-family: var(--font-mono); font-size: clamp(22px, 5vw, 32px); font-weight: 600; letter-spacing: .04em; padding: 10px 14px; border: 2px dashed var(--ink); border-radius: 4px; display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* sections */
+.secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 26px; }
+.sec { text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 14px; display: grid; gap: 6px; }
+.sec:hover { border-color: var(--ink); }
+.sec[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.sec .code { font-family: var(--font-mono); font-size: 26px; font-weight: 500; letter-spacing: .04em; color: var(--accent); }
+.sec .nm { font-family: var(--font-display); font-weight: 600; font-size: 17px; }
+.sec .ct { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.listhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; margin-bottom: 14px; }
+.listhead h2 { font-size: 24px; }
+.tickets { display: grid; gap: 12px; }
+.empty { border: 1px dashed var(--line); border-radius: 4px; padding: 26px 18px; color: var(--muted); text-align: center; }
+.ticket { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; display: grid; }
+.ticket .hd { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 14px; border-bottom: 1px dashed var(--line); }
+.ticket .code { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; background: var(--ink); color: var(--bg); padding: 2px 7px; border-radius: 3px; }
+.ticket .tid { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.ticket .sp { flex: 1 1 auto; }
+.ticket .bd { padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.ticket h3 { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.ticket .ds { color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.ticket .meta { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ticket .note { font-size: 13.5px; border-left: 3px solid var(--st-asg); padding-left: 10px; color: var(--ink); overflow-wrap: anywhere; }
+.pill { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); white-space: nowrap; }
+.pill[data-s="registered"] { --c: var(--st-reg); } .pill[data-s="assigned"] { --c: var(--st-asg); }
+.pill[data-s="progress"] { --c: var(--st-prog); } .pill[data-s="resolved"] { --c: var(--st-res); }
+.urgent { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--danger); border: 1px solid var(--danger); border-radius: 3px; padding: 1px 6px; }
+.staffbox { border-top: 1px dashed var(--line); padding: 12px 14px; display: grid; gap: 10px; background: var(--surface-2); }
+.staffbox .who { font-size: 13px; }
+.staffbox .ctl { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; gap: 8px; }
+@media (max-width: 620px) { .staffbox .ctl { grid-template-columns: minmax(0, 1fr); } }
+
+/* track */
+.trackbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.trackbar input { flex: 1 1 260px; width: auto; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
+.timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 14px; border-top: 1px dashed var(--line); }
+.timeline div { font-size: 12px; color: var(--muted); border-top: 4px solid var(--line); padding-top: 6px; }
+.timeline div.on { color: var(--ink); font-weight: 600; border-top-color: var(--c); }
+@media (max-width: 520px) { .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sub { margin: 28px 0 12px; font-size: 20px; }
+
+/* staff */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; border-top: 4px solid var(--c); }
+.stat b { display: block; font-family: var(--font-mono); font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.filters select { width: auto; min-width: 170px; }
+/* quick bicycle strip */
+.quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; border: 2px solid var(--ink); background: var(--surface); border-radius: 4px; padding: 12px 16px; margin-bottom: 22px; }
+.quick .code { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; background: var(--ink); color: var(--bg); padding: 2px 7px; border-radius: 3px; }
+.quick b { font-family: var(--font-display); font-size: 19px; }
+.quick .qph { margin-left: auto; }
+.quick .qph .mono { font-weight: 600; letter-spacing: .05em; }
+@media (max-width: 620px) { .quick .qph { margin-left: 0; } }
+/* help desk */
+.bike { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .bike { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px; display: grid; gap: 16px; min-width: 0; }
+.panel h3 { font-size: 22px; font-weight: 600; }
+.svc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.svc .code { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; background: var(--ink); color: var(--bg); padding: 2px 7px; border-radius: 3px; }
+.avl { --c: var(--muted); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); white-space: nowrap; }
+.avl[data-a="yes"] { --c: var(--st-res); }
+.avl[data-a="no"] { --c: var(--danger); }
+.rate { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rate b { font-family: var(--font-mono); font-size: clamp(40px, 9vw, 56px); font-weight: 500; line-height: 1; }
+.rate span { color: var(--muted); }
+.callout { border-left: 3px solid var(--danger); padding: 8px 12px; background: color-mix(in srgb, var(--danger) 8%, var(--surface)); font-size: 14px; }
+.callout[hidden], .ownernote[hidden] { display: none; }
+.ownernote { border-left: 3px solid var(--st-asg); padding-left: 10px; font-size: 14px; overflow-wrap: anywhere; }
+.stepper { display: flex; max-width: 230px; }
+.stepper button { width: 46px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 22px; line-height: 1; }
+.stepper button:first-child { border-radius: 4px 0 0 4px; }
+.stepper button:last-child { border-radius: 0 4px 4px 0; }
+.stepper input { text-align: center; border-radius: 0; font-family: var(--font-mono); font-size: 18px; border-left: 0; border-right: 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.chips button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); cursor: pointer; font-size: 13px; }
+.chips button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
+.total { border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.total b { font-family: var(--font-mono); font-size: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.phone { font-size: clamp(24px, 6vw, 34px); font-weight: 600; letter-spacing: .06em; border: 2px dashed var(--ink); border-radius: 4px; padding: 10px 14px; display: inline-block; max-width: 100%; overflow-wrap: anywhere; user-select: all; }
+.owner { border-top: 1px dashed var(--line); padding-top: 16px; display: grid; gap: 12px; }
+.owner[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) { .sec, .btn { transition: border-color .15s, background .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">NIT Agartala · Students' maintenance requests</div>
+      <h1>Complaint Desk</h1>
+      <p>Report a plumbing, electrical, carpentry or other problem in your hostel or on campus. Each report gets a ticket number you can track.</p>
+    </div>
+    <div class="tally" aria-label="Complaint totals">
+      <div><b id="t-total">0</b><span>Filed</span></div>
+      <div><b id="t-open">0</b><span>Open</span></div>
+      <div><b id="t-done">0</b><span>Resolved</span></div>
+    </div>
+  </header>
+
+  <div class="quick" id="quick">
+    <span class="code">BYC</span>
+    <b>Rent a bicycle</b>
+    <span>₹10 per hour</span>
+    <span class="avl" id="q-avl" data-a="unknown">Checking…</span>
+    <span class="qph">Call <span class="mono">7903966577</span></span>
+    <a class="btn small" href="#help" style="text-decoration:none">Hours and booking</a>
+  </div>
+
+  <nav class="tabs" aria-label="Sections of the app">
+    <a href="#register" data-view="register">Register complaint</a>
+    <a href="#sections" data-view="sections">Browse by section</a>
+    <a href="#track" data-view="track">Track a ticket</a>
+    <a href="#help" data-view="help">Help desk</a>
+    <a href="#staff" data-view="staff">Staff desk</a>
+  </nav>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <!-- REGISTER -->
+  <section id="v-register" data-pane="register">
+    <div class="reg">
+      <div>
+        <form id="form" novalidate>
+          <fieldset>
+            <legend>1. Which section does this belong to?</legend>
+            <div class="cats" id="cats"></div>
+            <div class="err" id="e-cat"></div>
+          </fieldset>
+
+          <fieldset class="field">
+            <label class="lbl" for="f-title">2. What is the problem? <span class="hint">(one line)</span></label>
+            <input type="text" id="f-title" maxlength="90" autocomplete="off" placeholder="e.g. Tap in washroom keeps leaking">
+            <div class="err" id="e-title"></div>
+          </fieldset>
+
+          <fieldset class="field">
+            <label class="lbl" for="f-desc">Details</label>
+            <textarea id="f-desc" maxlength="800" placeholder="What is wrong, since when, and anything the technician should know before coming."></textarea>
+            <div class="err" id="e-desc"></div>
+          </fieldset>
+
+          <div class="row2">
+            <div class="field">
+              <label class="lbl" for="f-where">3. Where is it?</label>
+              <select id="f-where">
+                <option>Boys' hostel</option>
+                <option>Girls' hostel</option>
+                <option>Academic block</option>
+                <option>Library</option>
+                <option>Mess / canteen</option>
+                <option>Sports area</option>
+                <option>Other place on campus</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" for="f-spot">Block, floor, room</label>
+              <input type="text" id="f-spot" maxlength="60" autocomplete="off" placeholder="e.g. Block B, 2nd floor, room 214">
+              <div class="err" id="e-spot"></div>
+            </div>
+          </div>
+
+          <fieldset>
+            <legend>How urgent is it?</legend>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="prio" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="prio" value="urgent"><span>Urgent: no water, no power or a safety risk</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>4. Who should the technician contact?</legend>
+            <div class="row2">
+              <div class="field">
+                <label class="lbl" for="f-name">Your name</label>
+                <input type="text" id="f-name" maxlength="60" autocomplete="name">
+                <div class="err" id="e-name"></div>
+              </div>
+              <div class="field">
+                <label class="lbl" for="f-roll">Roll number</label>
+                <input type="text" id="f-roll" maxlength="20" autocomplete="off">
+                <div class="err" id="e-roll"></div>
+              </div>
+              <div class="field">
+                <label class="lbl" for="f-phone">Mobile number <span class="hint">(optional)</span></label>
+                <input type="tel" id="f-phone" maxlength="14" autocomplete="tel" inputmode="tel">
+                <div class="err" id="e-phone"></div>
+              </div>
+            </div>
+            <p class="contact-note" style="margin-top:10px">Your name, roll number and phone are visible to staff only. Other students see the problem and its location.</p>
+          </fieldset>
+
+          <div>
+            <button class="btn" type="submit" id="submit">Register complaint</button>
+            <div class="err" id="e-form" style="margin-top:10px"></div>
+          </div>
+        </form>
+
+        <div class="done" id="done" hidden>
+          <div class="eyebrow">Complaint registered</div>
+          <h2>Keep this ticket number</h2>
+          <div><span class="bigid" id="done-id">NITA-000000-0000</span></div>
+          <p id="done-sub" class="hint"></p>
+          <div class="actions">
+            <button class="btn small" type="button" id="copy-id">Copy ticket number</button>
+            <a class="btn small ghost" href="#track" id="go-track" style="text-decoration:none">Track this ticket</a>
+            <button class="btn small ghost" type="button" id="again">Register another</button>
+          </div>
+          <div class="err" id="e-copy"></div>
+        </div>
+      </div>
+
+      <aside class="next">
+        <div class="eyebrow">What happens next</div>
+        <h2>Ticket life cycle</h2>
+        <ol class="steps">
+          <li style="--c:var(--st-reg)"><i></i><div><b>Registered</b><span>Your complaint is logged under its section.</span></div></li>
+          <li style="--c:var(--st-asg)"><i></i><div><b>Assigned</b><span>Staff hand it to the plumber, electrician or relevant team.</span></div></li>
+          <li style="--c:var(--st-prog)"><i></i><div><b>In progress</b><span>Work has started. Staff may leave a note.</span></div></li>
+          <li style="--c:var(--st-res)"><i></i><div><b>Resolved</b><span>The fix is done. Register again if the problem returns.</span></div></li>
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SECTIONS -->
+  <section id="v-sections" data-pane="sections" hidden>
+    <div class="secgrid" id="secgrid"></div>
+    <div class="listhead">
+      <h2 id="sec-title">All sections</h2>
+      <span class="eyebrow" id="sec-count"></span>
+    </div>
+    <div class="tickets" id="sec-list"></div>
+  </section>
+
+  <!-- TRACK -->
+  <section id="v-track" data-pane="track" hidden>
+    <form class="trackbar" id="trackform" novalidate>
+      <label class="lbl" for="t-id" style="width:100%;margin:0">Ticket number</label>
+      <input type="text" id="t-id" placeholder="NITA-261109-7K3Q" autocomplete="off" maxlength="24">
+      <button class="btn" type="submit">Check status</button>
+    </form>
+    <div class="err" id="e-track" style="margin:-8px 0 16px"></div>
+    <div class="tickets" id="track-result"></div>
+    <h2 class="sub">Complaints you registered</h2>
+    <div class="tickets" id="mine-list"></div>
+  </section>
+
+  <!-- HELP DESK -->
+  <section id="v-help" data-pane="help" hidden>
+    <div class="listhead">
+      <h2>Help desk</h2>
+      <span class="eyebrow">Services for students</span>
+    </div>
+    <div class="bike">
+      <div class="panel">
+        <div class="svc">
+          <span class="code">BYC</span>
+          <h3 id="bike-h">Rent a bicycle</h3>
+          <span class="avl" id="bike-avl" data-a="unknown">Checking…</span>
+        </div>
+        <div class="rate"><b>₹10</b><span>per hour</span></div>
+        <p class="callout" id="bike-msg" hidden></p>
+        <p class="ownernote" id="bike-note" hidden></p>
+        <div class="field">
+          <label class="lbl" for="b-hours">How many hours do you need?</label>
+          <div class="stepper">
+            <button type="button" id="h-dec" aria-label="One hour less">−</button>
+            <input id="b-hours" type="number" inputmode="numeric" min="1" max="24" step="1" value="1">
+            <button type="button" id="h-inc" aria-label="One hour more">+</button>
+          </div>
+          <div class="chips" id="h-chips"></div>
+          <div class="err" id="e-hours"></div>
+        </div>
+        <div class="total">
+          <span class="eyebrow">You pay</span>
+          <b id="b-total">₹10</b>
+          <span class="hint" id="b-sum">for 1 hour at ₹10 per hour</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Book by phone</h3>
+        <p>Call the number below to rent the bicycle. Tell the owner how many hours you need.</p>
+        <div><span class="phone mono" id="b-phone">7903966577</span></div>
+        <p class="hint" id="b-say"></p>
+        <div class="actions">
+          <a class="btn small" href="tel:7903966577" style="text-decoration:none">Call now</a>
+          <button class="btn small ghost" type="button" id="b-copy">Copy number</button>
+        </div>
+        <div class="hint" id="b-copied"></div>
+
+        <div class="owner" id="b-owner" hidden>
+          <div class="eyebrow">Owner controls · only you see this</div>
+          <div class="seg" role="radiogroup" aria-label="Bicycle availability">
+            <label><input type="radio" name="avl" value="yes"><span>Available</span></label>
+            <label><input type="radio" name="avl" value="no"><span>Not available</span></label>
+          </div>
+          <div class="field">
+            <label class="lbl" for="b-nt">Note for students <span class="hint">(optional)</span></label>
+            <input type="text" id="b-nt" maxlength="100" autocomplete="off" placeholder="e.g. Back at 6 PM">
+          </div>
+          <div class="actions"><button class="btn small" type="button" id="b-save">Update availability</button></div>
+          <div class="hint" id="b-ok"></div>
+          <div class="err" id="e-bsave"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAFF -->
+  <section id="v-staff" data-pane="staff" hidden>
+    <div id="staff-gate" class="empty" hidden></div>
+    <div id="staff-body">
+      <div class="stats" id="stats"></div>
+      <div class="filters">
+        <label class="eyebrow" style="align-self:center" for="fl-cat">Filter</label>
+        <select id="fl-cat" aria-label="Section"></select>
+        <select id="fl-st" aria-label="Status"></select>
+      </div>
+      <div class="tickets" id="staff-list"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATS = [
+    { code: "PLB", name: "Plumbing", blurb: "Leaking taps, blocked drains, flush tanks, no water supply" },
+    { code: "ELC", name: "Electrical", blurb: "Fans, lights, switches, sockets, wiring, power cuts in a room" },
+    { code: "CRP", name: "Carpentry", blurb: "Doors, windows, beds, almirahs, study tables, locks" },
+    { code: "NET", name: "Internet and Wi-Fi", blurb: "No connection, slow speed, broken LAN port" },
+    { code: "CLN", name: "Cleaning and sanitation", blurb: "Washrooms, corridors, garbage, pests" },
+    { code: "MSS", name: "Mess and canteen", blurb: "Food quality, hygiene, serving issues" },
+    { code: "CIV", name: "Civil and building", blurb: "Wall cracks, roof leaks, paint, flooring, stairs" },
+    { code: "OTH", name: "Other", blurb: "Anything that does not fit the sections above" }
+  ];
+  var STATES = [
+    { key: "registered", label: "Registered" },
+    { key: "assigned", label: "Assigned" },
+    { key: "progress", label: "In progress" },
+    { key: "resolved", label: "Resolved" }
+  ];
+  var LS_KEY = "nita-desk-local-v1";
+  var LS_MINE = "nita-desk-mine-v1";
+
+  var S = {
+    mode: "pending",       // pending | db | local
+    uid: null,
+    canSubmit: true,
+    isStaff: false,
+    loaded: false,
+    complaints: [],
+    status: {},
+    contacts: {},
+    mine: [],
+    selCat: "all",
+    flCat: "all",
+    flSt: "all",
+    db: null,
+    timedOut: false
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function h(tag, props) {
+    var e = document.createElement(tag);
+    props = props || {};
+    Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (k === "class") e.className = v;
+      else if (k.indexOf("on") === 0) e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, "");
+      else if (v !== false && v != null) e.setAttribute(k, v);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      kids.forEach(function (c) {
+        if (c == null || c === false) return;
+        e.append(c.nodeType ? c : document.createTextNode(String(c)));
+      });
+    }
+    return e;
+  }
+  function catOf(code) { return CATS.filter(function (c) { return c.code === code; })[0] || CATS[CATS.length - 1]; }
+  function stateOf(c) { return (S.status[c.id] && S.status[c.id].state) || "registered"; }
+  function noteOf(c) { return (S.status[c.id] && S.status[c.id].note) || ""; }
+  function labelOf(k) { return STATES.filter(function (s) { return s.key === k; })[0].label; }
+  function fmt(ts) {
+    try { return new Date(ts).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return ""; }
+  }
+  function makeId() {
+    var d = new Date();
+    var yy = String(d.getFullYear()).slice(2), mm = ("0" + (d.getMonth() + 1)).slice(-2), dd = ("0" + d.getDate()).slice(-2);
+    var abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", s = "";
+    var buf = new Uint32Array(4);
+    (window.crypto || {}).getRandomValues ? crypto.getRandomValues(buf) : buf.forEach(function (_, i) { buf[i] = Math.floor(Math.random() * 4e9); });
+    for (var i = 0; i < 4; i++) s += abc[buf[i] % abc.length];
+    return "NITA-" + yy + mm + dd + "-" + s;
+  }
+  function lsGet(k, fallback) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  /* ---------- static UI ---------- */
+  var catsBox = $("cats");
+  CATS.forEach(function (c) {
+    catsBox.append(h("label", { class: "cat" },
+      h("input", { type: "radio", name: "cat", value: c.code }),
+      h("span", { class: "card" },
+        h("span", { class: "code" }, c.code),
+        h("span", { class: "nm" }, c.name),
+        h("span", { class: "bl" }, c.blurb))));
+  });
+  var flCat = $("fl-cat"), flSt = $("fl-st");
+  flCat.append(h("option", { value: "all" }, "All sections"));
+  CATS.forEach(function (c) { flCat.append(h("option", { value: c.code }, c.code + " · " + c.name)); });
+  flSt.append(h("option", { value: "all" }, "All statuses"));
+  STATES.forEach(function (s) { flSt.append(h("option", { value: s.key }, s.label)); });
+  flCat.addEventListener("change", function () { S.flCat = flCat.value; renderStaff(); });
+  flSt.addEventListener("change", function () { S.flSt = flSt.value; renderStaff(); });
+
+  /* ---------- ticket card ---------- */
+  function ticket(c, opts) {
+    opts = opts || {};
+    var cat = catOf(c.cat), st = stateOf(c), note = noteOf(c);
+    var card = h("article", { class: "ticket" },
+      h("div", { class: "hd" },
+        h("span", { class: "code" }, cat.code),
+        h("span", { class: "tid" }, c.id),
+        c.priority === "urgent" ? h("span", { class: "urgent" }, "Urgent") : null,
+        h("span", { class: "sp" }),
+        h("span", { class: "pill", "data-s": st }, labelOf(st))),
+      h("div", { class: "bd" },
+        h("h3", {}, c.title),
+        c.desc ? h("p", { class: "ds" }, c.desc) : null,
+        h("div", { class: "meta" },
+          h("span", {}, c.where + (c.spot ? " · " + c.spot : "")),
+          h("span", {}, "Filed " + fmt(c.createdAt))),
+        note ? h("p", { class: "note" }, "Staff note: " + note) : null));
+    if (opts.timeline) {
+      var idx = STATES.map(function (s) { return s.key; }).indexOf(st);
+      var tl = h("div", { class: "timeline", style: "--c:var(--st-" + (st === "registered" ? "reg" : st === "assigned" ? "asg" : st === "progress" ? "prog" : "res") + ")" });
+      STATES.forEach(function (s, i) { tl.append(h("div", { class: i <= idx ? "on" : "" }, s.label)); });
+      card.append(tl);
+    }
+    if (opts.staff) card.append(staffBox(c, st, note));
+    return card;
+  }
+
+  function staffBox(c, st, note) {
+    var ct = S.contacts[c.reporter] || null;
+    var sel = h("select", { "aria-label": "Status for " + c.id });
+    STATES.forEach(function (s) { sel.append(h("option", { value: s.key }, s.label)); });
+    sel.value = st;
+    var inp = h("input", { type: "text", maxlength: "160", placeholder: "Note for the student (optional)", "aria-label": "Note for " + c.id });
+    inp.value = note;
+    var msg = h("div", { class: "err" });
+    var btn = h("button", { class: "btn small", type: "button" }, "Save");
+    btn.addEventListener("click", function () {
+      btn.disabled = true; msg.textContent = "";
+      saveStatus(c.id, sel.value, inp.value.trim()).then(function () { btn.disabled = false; }, function (e) {
+        btn.disabled = false;
+        msg.textContent = "Could not save. Only staff with edit access can change status.";
+      });
+    });
+    var who;
+    if (ct && (ct.name || ct.roll)) who = "Contact: " + [ct.name, ct.roll, ct.phone].filter(Boolean).join(" · ");
+    else if (S.mode === "local" && c.contact) who = "Contact: " + [c.contact.name, c.contact.roll, c.contact.phone].filter(Boolean).join(" · ");
+    else who = "Contact details not available for this ticket.";
+    return h("div", { class: "staffbox" }, h("div", { class: "who" }, who), h("div", { class: "ctl" }, sel, inp, btn), msg);
+  }
+
+  /* ---------- renders ---------- */
+  var staffListEl = $("staff-list"), deferStaff = false;
+
+  function renderTally() {
+    var total = S.complaints.length;
+    var done = S.complaints.filter(function (c) { return stateOf(c) === "resolved"; }).length;
+    $("t-total").textContent = total;
+    $("t-done").textContent = done;
+    $("t-open").textContent = total - done;
+  }
+  function sorted(list) { return list.slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); }); }
+  function emptyMsg(text) { return h("div", { class: "empty" }, text); }
+  function loadingText(base) { return S.mode === "pending" ? "Loading complaints…" : (!S.loaded && S.mode === "db" ? (S.timedOut ? "Complaints could not be reached yet. Check your connection." : "Loading complaints…") : base); }
+
+  function renderSections() {
+    var grid = $("secgrid"); grid.textContent = "";
+    CATS.forEach(function (c) {
+      var mine = S.complaints.filter(function (x) { return x.cat === c.code; });
+      var open = mine.filter(function (x) { return stateOf(x) !== "resolved"; }).length;
+      grid.append(h("button", { class: "sec", type: "button", "aria-pressed": String(S.selCat === c.code),
+        onclick: function () { S.selCat = (S.selCat === c.code ? "all" : c.code); renderSections(); } },
+        h("span", { class: "code" }, c.code),
+        h("span", { class: "nm" }, c.name),
+        h("span", { class: "ct" }, open + " open · " + mine.length + " total")));
+    });
+    var list = S.complaints.filter(function (x) { return S.selCat === "all" || x.cat === S.selCat; });
+    $("sec-title").textContent = S.selCat === "all" ? "All sections" : catOf(S.selCat).name;
+    $("sec-count").textContent = list.length + (list.length === 1 ? " complaint" : " complaints");
+    var box = $("sec-list"); box.textContent = "";
+    if (!list.length) box.append(emptyMsg(loadingText(S.selCat === "all" ? "No complaints yet. Register the first one from the Register tab." : "No complaints in this section yet.")));
+    else sorted(list).forEach(function (c) { box.append(ticket(c, { staff: S.isStaff && S.mode === "local" ? false : false })); });
+  }
+
+  function renderTrackMine() {
+    var box = $("mine-list"); box.textContent = "";
+    var ids = S.mine;
+    var list = S.complaints.filter(function (c) { return (S.uid && c.reporter === S.uid) || ids.indexOf(c.id) > -1; });
+    if (!list.length) box.append(emptyMsg(loadingText("Complaints you register on this device or account will appear here.")));
+    else sorted(list).forEach(function (c) { box.append(ticket(c, { timeline: true })); });
+  }
+
+  function renderStaff() {
+    var gate = $("staff-gate"), body = $("staff-body");
+    if (!S.isStaff) {
+      gate.hidden = false; body.hidden = true;
+      gate.textContent = S.mode === "pending" ? "Checking access…" : "The staff desk is for the people who maintain this app. Staff with edit access can assign tickets and update their status here.";
+      return;
+    }
+    gate.hidden = true; body.hidden = false;
+    var stats = $("stats"); stats.textContent = "";
+    var colors = { registered: "reg", assigned: "asg", progress: "prog", resolved: "res" };
+    STATES.forEach(function (s) {
+      var n = S.complaints.filter(function (c) { return stateOf(c) === s.key; }).length;
+      stats.append(h("div", { class: "stat", style: "--c:var(--st-" + colors[s.key] + ")" }, h("b", {}, n), h("span", {}, s.label)));
+    });
+    var list = S.complaints.filter(function (c) {
+      return (S.flCat === "all" || c.cat === S.flCat) && (S.flSt === "all" || stateOf(c) === S.flSt);
+    });
+    staffListEl.textContent = "";
+    if (!list.length) staffListEl.append(emptyMsg(loadingText("No complaints match this filter.")));
+    else sorted(list).sort(function (a, b) { return (b.priority === "urgent") - (a.priority === "urgent"); })
+      .forEach(function (c) { staffListEl.append(ticket(c, { staff: true })); });
+  }
+
+  function renderAll() {
+    renderTally(); renderSections(); renderTrackMine(); renderBike();
+    if (staffListEl.contains(document.activeElement)) { deferStaff = true; renderTallyOnly(); } else renderStaff();
+  }
+  function renderTallyOnly() { renderTally(); }
+  document.addEventListener("focusout", function () {
+    setTimeout(function () { if (deferStaff && !staffListEl.contains(document.activeElement)) { deferStaff = false; renderStaff(); } }, 80);
+  });
+
+  function setBanner(text) { var b = $("banner"); b.hidden = !text; b.textContent = text || ""; }
+
+  /* ---------- routing ---------- */
+  var VIEWS = ["register", "sections", "track", "help", "staff"];
+  function route() {
+    var v = (location.hash || "").replace("#", "");
+    if (VIEWS.indexOf(v) < 0) v = "register";
+    VIEWS.forEach(function (n) { $("v-" + n).hidden = n !== v; });
+    document.querySelectorAll("nav.tabs a").forEach(function (a) {
+      if (a.dataset.view === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+  }
+  window.addEventListener("hashchange", route);
+
+  /* ---------- data layer ---------- */
+  function saveLocal() { lsSet(LS_KEY, { complaints: S.complaints, status: S.status }); }
+
+  function saveStatus(id, state, note) {
+    var rec = { state: state, note: note, at: Date.now() };
+    if (S.mode === "db") return S.db.doc("status/" + id).set(rec);
+    S.status[id] = rec; saveLocal(); renderAll(); return Promise.resolve();
+  }
+
+  function addMine(id) {
+    S.mine = S.mine.concat([id]); lsSet(LS_MINE, S.mine);
+  }
+
+  async function createComplaint(rec, contact) {
+    if (S.mode === "db") {
+      await S.db.collection("complaints").doc(rec.id).set(rec);
+      if (S.uid) { try { await S.db.doc("contacts/" + S.uid).set(contact); } catch (e) {} }
+    } else {
+      rec.contact = contact;
+      S.complaints = S.complaints.concat([rec]); saveLocal(); renderAll();
+    }
+    addMine(rec.id);
+  }
+
+  /* ---------- form ---------- */
+  var form = $("form");
+  function setErr(id, text) { $(id).textContent = text || ""; }
+  function validate() {
+    var ok = true;
+    var cat = (form.querySelector("input[name=cat]:checked") || {}).value;
+    var title = $("f-title").value.trim(), desc = $("f-desc").value.trim();
+    var name = $("f-name").value.trim(), roll = $("f-roll").value.trim(), phone = $("f-phone").value.trim();
+    var spot = $("f-spot").value.trim();
+    setErr("e-cat", cat ? "" : "Choose the section this complaint belongs to."); if (!cat) ok = false;
+    setErr("e-title", title.length >= 5 ? "" : "Describe the problem in a few words (at least 5 characters)."); if (title.length < 5) ok = false;
+    setErr("e-desc", desc.length >= 10 ? "" : "Add a few details so the technician knows what to bring."); if (desc.length < 10) ok = false;
+    setErr("e-spot", spot ? "" : "Enter the block, floor or room."); if (!spot) ok = false;
+    setErr("e-name", name ? "" : "Enter your name."); if (!name) ok = false;
+    setErr("e-roll", roll ? "" : "Enter your roll number."); if (!roll) ok = false;
+    var digits = phone.replace(/[^0-9]/g, "");
+    var phoneOk = !phone || (digits.length >= 10 && digits.length <= 12);
+    setErr("e-phone", phoneOk ? "" : "Enter a 10-digit mobile number or leave it empty."); if (!phoneOk) ok = false;
+    return ok ? { cat: cat, title: title, desc: desc, where: $("f-where").value, spot: spot, priority: form.querySelector("input[name=prio]:checked").value,
+      contact: { name: name, roll: roll, phone: phone } } : null;
+  }
+
+  form.addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    setErr("e-form", "");
+    var v = validate();
+    if (!v) { var first = form.querySelector(".err:not(:empty)"); if (first) first.scrollIntoView({ block: "center" }); return; }
+    if (!S.canSubmit) { setErr("e-form", "Your account can view complaints but not submit them. Ask the app owner for contributor access."); return; }
+    var btn = $("submit"); btn.disabled = true; btn.textContent = "Registering…";
+    var rec = { id: makeId(), cat: v.cat, title: v.title, desc: v.desc, where: v.where, spot: v.spot, priority: v.priority, createdAt: Date.now(), reporter: S.uid || null };
+    try {
+      await createComplaint(rec, v.contact);
+      showDone(rec);
+      form.reset();
+    } catch (e) {
+      setErr("e-form", e && e.code === "quota_exceeded"
+        ? "The complaint store is full. Please tell the app owner."
+        : "Could not register the complaint. Check your connection and try again.");
+    }
+    btn.disabled = false; btn.textContent = "Register complaint";
+  });
+
+  function showDone(rec) {
+    form.hidden = true; $("done").hidden = false;
+    $("done-id").textContent = rec.id;
+    $("done-sub").textContent = "Filed under " + catOf(rec.cat).name + (S.mode === "local" ? ". Saved on this device only." : ". Staff can now see it and assign it.");
+    $("e-copy").textContent = "";
+    $("t-id").value = rec.id;
+    window.scrollTo({ top: 0 });
+  }
+  $("again").addEventListener("click", function () { $("done").hidden = true; form.hidden = false; });
+  $("go-track").addEventListener("click", function () { setTimeout(doTrack, 0); });
+  $("copy-id").addEventListener("click", function () {
+    var text = $("done-id").textContent;
+    var fallback = function () {
+      var r = document.createRange(); r.selectNodeContents($("done-id"));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      $("e-copy").textContent = "Press and hold or Ctrl+C to copy the selected number.";
+    };
+    try { navigator.clipboard.writeText(text).then(function () { $("e-copy").textContent = "Copied."; }, fallback); } catch (e) { fallback(); }
+  });
+
+  /* ---------- track ---------- */
+  function doTrack() {
+    var id = $("t-id").value.trim().toUpperCase();
+    var out = $("track-result"); out.textContent = ""; setErr("e-track", "");
+    if (!id) { setErr("e-track", "Enter the ticket number you received, like NITA-261109-7K3Q."); return; }
+    var c = S.complaints.filter(function (x) { return x.id === id; })[0];
+    if (!c) { setErr("e-track", S.loaded || S.mode === "local" ? "No ticket with that number. Check for typing mistakes." : "Complaints are still loading. Try again in a moment."); return; }
+    out.append(ticket(c, { timeline: true }));
+  }
+  $("trackform").addEventListener("submit", function (e) { e.preventDefault(); doTrack(); });
+
+  /* ---------- help desk: rent a bicycle ---------- */
+  var BIKE_RATE = 10, LS_BIKE = "nita-desk-bike-v1";
+  S.bike = null; S.bikeLoaded = false; S.hours = 1;
+  var bikeSyncKey = "__unset__";
+  [1, 2, 3, 5, 8].forEach(function (n) {
+    $("h-chips").append(h("button", { type: "button", "data-h": String(n), onclick: function () { setHours(n); } }, n + (n === 1 ? " hour" : " hours")));
+  });
+  function setHours(n) { S.hours = n; $("b-hours").value = String(n); setErr("e-hours", ""); renderBike(); }
+  $("h-dec").addEventListener("click", function () { setHours(Math.max(1, S.hours - 1)); });
+  $("h-inc").addEventListener("click", function () { setHours(Math.min(24, S.hours + 1)); });
+  $("b-hours").addEventListener("input", function () {
+    var raw = this.value.trim(), n = Number(raw);
+    if (!raw) { setErr("e-hours", "Enter the number of hours."); return; }
+    if (!Number.isInteger(n) || n < 1 || n > 24) { setErr("e-hours", "Enter whole hours from 1 to 24. For a longer rental, call and ask."); return; }
+    setErr("e-hours", ""); S.hours = n; renderBike();
+  });
+
+  function renderBike() {
+    var b = S.bike, a = b ? (b.available ? "yes" : "no") : "unknown";
+    var avl = $("bike-avl");
+    avl.dataset.a = a;
+    avl.textContent = a === "yes" ? "Available now" : a === "no" ? "Not available now" : (S.bikeLoaded ? "Not updated yet" : "Checking…");
+    var q = $("q-avl"); q.dataset.a = a; q.textContent = avl.textContent;
+    var msg = $("bike-msg");
+    if (a === "no") { msg.hidden = false; msg.textContent = "The bicycle is out right now. You can still call to ask when it will be back."; }
+    else if (a === "unknown" && S.bikeLoaded) { msg.hidden = false; msg.textContent = "The owner has not updated availability yet. Call to check before you walk over."; }
+    else msg.hidden = true;
+    var nt = $("bike-note");
+    if (b && b.note) { nt.hidden = false; nt.textContent = "Owner's note: " + b.note + (b.updatedAt ? " (updated " + fmt(b.updatedAt) + ")" : ""); } else nt.hidden = true;
+    var n = S.hours, hrs = n + (n === 1 ? " hour" : " hours");
+    $("b-total").textContent = "₹" + (n * BIKE_RATE);
+    $("b-sum").textContent = "for " + hrs + " at ₹" + BIKE_RATE + " per hour";
+    $("b-say").textContent = "When you call, say you want the bicycle for " + hrs + " (₹" + (n * BIKE_RATE) + ").";
+    document.querySelectorAll("#h-chips button").forEach(function (c) { c.setAttribute("aria-pressed", String(Number(c.dataset.h) === n)); });
+    var own = $("b-owner");
+    own.hidden = !S.isStaff;
+    var key = JSON.stringify(b);
+    if (key !== bikeSyncKey && !own.contains(document.activeElement)) {
+      bikeSyncKey = key;
+      document.querySelectorAll("input[name=avl]").forEach(function (r) { r.checked = !!b && r.value === (b.available ? "yes" : "no"); });
+      $("b-nt").value = (b && b.note) || "";
+    }
+  }
+
+  $("b-save").addEventListener("click", function () {
+    var sel = document.querySelector("input[name=avl]:checked");
+    setErr("e-bsave", ""); $("b-ok").textContent = "";
+    if (!sel) { setErr("e-bsave", "Choose Available or Not available first."); return; }
+    var rec = { available: sel.value === "yes", note: $("b-nt").value.trim(), updatedAt: Date.now() };
+    var btn = $("b-save"); btn.disabled = true;
+    var done = function () { btn.disabled = false; $("b-ok").textContent = "Updated. Students now see: " + (rec.available ? "Available now" : "Not available now") + "."; };
+    var fail = function () { btn.disabled = false; setErr("e-bsave", "Could not save. Only the owner or editors can update availability."); };
+    if (S.mode === "db") S.db.doc("help/bicycle").set(rec).then(done, fail);
+    else { S.bike = rec; lsSet(LS_BIKE, rec); renderBike(); done(); }
+  });
+
+  $("b-copy").addEventListener("click", function () {
+    var text = $("b-phone").textContent;
+    var fallback = function () {
+      var r = document.createRange(); r.selectNodeContents($("b-phone"));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      $("b-copied").textContent = "Press and hold or Ctrl+C to copy the selected number.";
+    };
+    try { navigator.clipboard.writeText(text).then(function () { $("b-copied").textContent = "Number copied."; }, fallback); } catch (e) { fallback(); }
+  });
+
+  /* ---------- boot ---------- */
+  S.mine = lsGet(LS_MINE, []);
+  route();
+  renderAll();
+
+  function startLocal(reason) {
+    S.mode = "local"; S.isStaff = true; S.loaded = true;
+    var saved = lsGet(LS_KEY, { complaints: [], status: {} });
+    S.complaints = saved.complaints || []; S.status = saved.status || {};
+    S.bike = lsGet(LS_BIKE, null); S.bikeLoaded = true;
+    setBanner(reason);
+    renderAll();
+  }
+
+  async function boot() {
+    var db = null, user = null;
+    try {
+      if (window.claude && window.claude.use) { db = await window.claude.use("db"); user = await window.claude.use("user"); }
+    } catch (e) { db = null; }
+    if (!db) { startLocal("Demo mode: complaints are saved in this browser only. Open the shared link while signed in to collect complaints from every student, with staff-only status updates."); return; }
+
+    S.mode = "db"; S.db = db;
+    try { S.uid = user ? await user.id() : null; } catch (e) {}
+    try { S.isStaff = user ? await user.canEdit() : false; } catch (e) {}
+    try { var cw = user ? await user.can("data.write") : null; S.canSubmit = cw !== false; } catch (e) {}
+    if (!S.canSubmit) setBanner("You can view complaints but not register new ones with this account. Ask the app owner for contributor access.");
+    renderAll();
+
+    var timer = setTimeout(function () { if (!S.loaded) { S.timedOut = true; renderAll(); } }, 10000);
+    db.collection("complaints").onSnapshot(function (snap) {
+      S.complaints = snap.docs.map(function (d) { return d.data(); });
+      if (!snap.metadata.fromCache) { S.loaded = true; clearTimeout(timer); }
+      renderAll();
+    }, function () { S.loaded = false; S.timedOut = true; renderAll(); });
+    db.collection("status").onSnapshot(function (snap) {
+      var m = {}; snap.docs.forEach(function (d) { m[d.id] = d.data(); });
+      S.status = m; renderAll();
+    }, function () {});
+    db.doc("help/bicycle").onSnapshot(function (snap) {
+      S.bike = snap.exists ? snap.data() : null;
+      if (!snap.metadata.fromCache) S.bikeLoaded = true;
+      renderBike();
+    }, function () {});
+    db.collection("contacts").onSnapshot(function (snap) {
+      var m = {}; snap.docs.forEach(function (d) { m[d.id] = d.data(); });
+      S.contacts = m; renderAll();
+    }, function () {});
+  }
+  boot();
+})();
+</script>
+
+</body></html>
